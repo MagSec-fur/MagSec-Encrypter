@@ -1,0 +1,16 @@
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\obj\Release\net10.0-windows\win-x64\TextEncryptorApp.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\obj\Release\net10.0-windows\win-x64\TextEncryptorApp.AssemblyInfoInputs.cache
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\obj\Release\net10.0-windows\win-x64\TextEncryptorApp.AssemblyInfo.cs
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\obj\Release\net10.0-windows\win-x64\TextEncryptorApp.csproj.CoreCompileInputs.cache
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\bin\Release\net10.0-windows\win-x64\magsec_logo.jpg
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\bin\Release\net10.0-windows\win-x64\magsec_logo_transparent.png
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\bin\Release\net10.0-windows\win-x64\MagSec Encrypter.exe
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\bin\Release\net10.0-windows\win-x64\MagSec Encrypter.deps.json
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\bin\Release\net10.0-windows\win-x64\MagSec Encrypter.runtimeconfig.json
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\bin\Release\net10.0-windows\win-x64\MagSec Encrypter.dll
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\bin\Release\net10.0-windows\win-x64\MagSec Encrypter.pdb
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\obj\Release\net10.0-windows\win-x64\MagSec Encrypter.dll
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\obj\Release\net10.0-windows\win-x64\refint\MagSec Encrypter.dll
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\obj\Release\net10.0-windows\win-x64\MagSec Encrypter.pdb
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\obj\Release\net10.0-windows\win-x64\TextEncryptorApp.genruntimeconfig.cache
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\obj\Release\net10.0-windows\win-x64\ref\MagSec Encrypter.dll

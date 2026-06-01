@@ -1,0 +1,7 @@
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\bin\Release\net10.0-windows\publish-v2\MagSec Encrypter.exe
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\bin\Release\net10.0-windows\publish-v2\magsec_logo.jpg
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\bin\Release\net10.0-windows\publish-v2\magsec_logo_transparent.png
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\bin\Release\net10.0-windows\publish-v2\MagSec Encrypter.dll
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\bin\Release\net10.0-windows\publish-v2\MagSec Encrypter.deps.json
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\bin\Release\net10.0-windows\publish-v2\MagSec Encrypter.runtimeconfig.json
+C:\Users\Desiny_fur\Documents\Random_App\TextEncryptorApp\bin\Release\net10.0-windows\publish-v2\MagSec Encrypter.pdb
