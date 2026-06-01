@@ -31,6 +31,9 @@ partial class Form1
         brandPictureBox = new PictureBox();
         keyRailPanel = new GlassPanel();
         sideInfoLabel = new Label();
+        keyStrengthLabel = new Label();
+        generateKeyButton = new NeonButton();
+        toggleKeysButton = new NeonButton();
         key4TextBox = new TextBox();
         key4Label = new Label();
         key3TextBox = new TextBox();
@@ -142,6 +145,9 @@ partial class Form1
         // keyRailPanel
         // 
         keyRailPanel.Controls.Add(sideInfoLabel);
+        keyRailPanel.Controls.Add(toggleKeysButton);
+        keyRailPanel.Controls.Add(generateKeyButton);
+        keyRailPanel.Controls.Add(keyStrengthLabel);
         keyRailPanel.Controls.Add(key4TextBox);
         keyRailPanel.Controls.Add(key4Label);
         keyRailPanel.Controls.Add(key3TextBox);
@@ -156,15 +162,47 @@ partial class Form1
         keyRailPanel.Name = "keyRailPanel";
         keyRailPanel.Size = new Size(282, 526);
         keyRailPanel.TabIndex = 1;
-        // 
+        //
         // sideInfoLabel
-        // 
+        //
         sideInfoLabel.Font = new Font("Segoe UI", 9F);
-        sideInfoLabel.Location = new Point(24, 409);
+        sideInfoLabel.Location = new Point(24, 452);
         sideInfoLabel.Name = "sideInfoLabel";
         sideInfoLabel.Size = new Size(220, 56);
-        sideInfoLabel.TabIndex = 10;
+        sideInfoLabel.TabIndex = 13;
         sideInfoLabel.Text = "Use the same key combination for both text and image decryption later.";
+        //
+        // keyStrengthLabel
+        //
+        keyStrengthLabel.Font = new Font("Segoe UI Semibold", 9F, FontStyle.Bold);
+        keyStrengthLabel.ForeColor = Color.FromArgb(148, 163, 184);
+        keyStrengthLabel.Location = new Point(24, 376);
+        keyStrengthLabel.Name = "keyStrengthLabel";
+        keyStrengthLabel.Size = new Size(220, 18);
+        keyStrengthLabel.TabIndex = 10;
+        keyStrengthLabel.Text = "Strength: —";
+        //
+        // generateKeyButton
+        //
+        generateKeyButton.ForeColor = Color.FromArgb(245, 248, 255);
+        generateKeyButton.Location = new Point(24, 402);
+        generateKeyButton.Name = "generateKeyButton";
+        generateKeyButton.Size = new Size(104, 38);
+        generateKeyButton.TabIndex = 11;
+        generateKeyButton.Text = "Generate";
+        generateKeyButton.UseVisualStyleBackColor = false;
+        generateKeyButton.Click += GenerateKeyButton_Click;
+        //
+        // toggleKeysButton
+        //
+        toggleKeysButton.ForeColor = Color.FromArgb(245, 248, 255);
+        toggleKeysButton.Location = new Point(140, 402);
+        toggleKeysButton.Name = "toggleKeysButton";
+        toggleKeysButton.Size = new Size(104, 38);
+        toggleKeysButton.TabIndex = 12;
+        toggleKeysButton.Text = "Show keys";
+        toggleKeysButton.UseVisualStyleBackColor = false;
+        toggleKeysButton.Click += ToggleKeysButton_Click;
         // 
         // key4TextBox
         // 
@@ -564,6 +602,9 @@ partial class Form1
     private PictureBox brandPictureBox;
     private GlassPanel keyRailPanel;
     private Label sideInfoLabel;
+    private Label keyStrengthLabel;
+    private NeonButton generateKeyButton;
+    private NeonButton toggleKeysButton;
     private TextBox key4TextBox;
     private Label key4Label;
     private TextBox key3TextBox;

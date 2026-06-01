@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.ComponentModel;
 using System.Drawing.Drawing2D;
 using System.Runtime.InteropServices;
@@ -12,9 +13,22 @@ public partial class Form1 : Form
     private const int NonceSize = 12;
     private const int TagSize = 16;
     private const int KeySize = 32;
-    private const int Pbkdf2Iterations = 200_000;
-    private const string TextPrefix = "TXT1";
-    private const string ImagePrefix = "IMG1";
+    private const int Pbkdf2Iterations = 600_000;
+    private const int LegacyPbkdf2Iterations = 200_000;
+    private const int MinimumKeyLength = 8;
+    private const byte FormatVersion = 2;
+    private const byte KdfSha256 = 1;
+    private const byte KdfSha512 = 2;
+
+    // V2 self-describing format. V1 prefixes are still decryptable for backwards compatibility.
+    private const string TextPrefix = "TXT2";
+    private const string ImagePrefix = "IMG2";
+    private const string LegacyTextPrefix = "TXT1";
+    private const string LegacyImagePrefix = "IMG1";
+
+    // prefix(4) + version(1) + kdfId(1) + iterations(4) + salt(16) + nonce(12)
+    private const int V2HeaderLength = 4 + 1 + 1 + 4 + SaltSize + NonceSize;
+    private const int LegacyHeaderLength = 4 + SaltSize + NonceSize + TagSize;
 
     private static readonly Color VoidColor = Color.FromArgb(3, 0, 20);
     private static readonly Color PanelColor = Color.FromArgb(12, 17, 39);
@@ -32,6 +46,7 @@ public partial class Form1 : Form
     private float nebulaPhase;
     private string? selectedImagePath;
     private string? selectedEncryptedImagePath;
+    private bool keysVisible;
 
     public Form1()
     {
@@ -39,7 +54,18 @@ public partial class Form1 : Form
         ApplyTheme();
         LoadBrandImage();
         ConfigureDragAndDrop();
+        ConfigureKeyFeedback();
         InitializeStarfield();
+    }
+
+    private void ConfigureKeyFeedback()
+    {
+        foreach (TextBox keyBox in new[] { key1TextBox, key2TextBox, key3TextBox, key4TextBox })
+        {
+            keyBox.TextChanged += (_, _) => UpdateKeyStrength();
+        }
+
+        UpdateKeyStrength();
     }
 
     private void ApplyTheme()
@@ -61,6 +87,9 @@ public partial class Form1 : Form
         ConfigureButton(encryptImageButton, TealColor);
         ConfigureButton(selectEncryptedImageButton, IndigoColor);
         ConfigureButton(decryptImageButton, CyanColor);
+        ConfigureButton(generateKeyButton, EmeraldColor);
+        ConfigureButton(toggleKeysButton, Color.FromArgb(36, 45, 72), isSecondary: true);
+        toggleKeysButton.GlowColor = CyanColor;
 
         StyleTextBox(key1TextBox);
         StyleTextBox(key2TextBox);
@@ -297,7 +326,7 @@ public partial class Form1 : Form
             }
 
             byte[] payload = Convert.FromBase64String(inputTextBox.Text.Trim());
-            byte[] plain = DecryptBytes(payload, secret, TextPrefix);
+            byte[] plain = DecryptBytes(payload, secret, TextPrefix, LegacyTextPrefix);
             outputTextBox.Text = Encoding.UTF8.GetString(plain);
             ShowStatus("Text decrypted successfully.", isError: false);
         }
@@ -339,11 +368,76 @@ public partial class Form1 : Form
         ShowStatus("Workspace cleared.", isError: false);
     }
 
+    private void GenerateKeyButton_Click(object sender, EventArgs e)
+    {
+        TextBox target = new[] { key1TextBox, key2TextBox, key3TextBox, key4TextBox }
+            .FirstOrDefault(box => string.IsNullOrWhiteSpace(box.Text)) ?? key1TextBox;
+
+        target.Text = GenerateStrongKey(24);
+
+        if (!keysVisible)
+        {
+            SetKeysVisible(true);
+        }
+
+        target.Focus();
+        ShowStatus("Strong key generated. Store it somewhere safe.", isError: false);
+    }
+
+    private void ToggleKeysButton_Click(object sender, EventArgs e)
+    {
+        SetKeysVisible(!keysVisible);
+    }
+
+    private void SetKeysVisible(bool visible)
+    {
+        keysVisible = visible;
+        char passwordChar = visible ? '\0' : '*';
+        foreach (TextBox keyBox in new[] { key1TextBox, key2TextBox, key3TextBox, key4TextBox })
+        {
+            keyBox.PasswordChar = passwordChar;
+        }
+
+        toggleKeysButton.Text = visible ? "Hide keys" : "Show keys";
+    }
+
+    private static string GenerateStrongKey(int length)
+    {
+        // Unambiguous alphabet (no 0/O/1/l/I) so generated keys are easy to transcribe.
+        const string alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*-_=+";
+        char[] result = new char[length];
+        for (int index = 0; index < length; index++)
+        {
+            result[index] = alphabet[RandomNumberGenerator.GetInt32(alphabet.Length)];
+        }
+
+        return new string(result);
+    }
+
+    private void UpdateKeyStrength()
+    {
+        int totalLength = new[] { key1TextBox.Text, key2TextBox.Text, key3TextBox.Text, key4TextBox.Text }
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Sum(key => key.Trim().Length);
+
+        (string label, Color color) = totalLength switch
+        {
+            0 => ("Strength: —", TextMutedColor),
+            < MinimumKeyLength => ("Strength: Weak", DangerColor),
+            < 16 => ("Strength: Fair", Color.FromArgb(250, 204, 21)),
+            < 28 => ("Strength: Strong", EmeraldColor),
+            _ => ("Strength: Excellent", TealColor)
+        };
+
+        keyStrengthLabel.Text = label;
+        keyStrengthLabel.ForeColor = color;
+    }
+
     private void SelectImageButton_Click(object sender, EventArgs e)
     {
         using OpenFileDialog dialog = new()
         {
-            Filter = "Afbeeldingen|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp|Alle bestanden|*.*",
+            Filter = "Images|*.png;*.jpg;*.jpeg;*.bmp;*.gif;*.webp|All files|*.*",
             Title = "Select an image"
         };
 
@@ -395,7 +489,7 @@ public partial class Form1 : Form
     {
         using OpenFileDialog dialog = new()
         {
-            Filter = "MagSec encrypted image|*.mseimg|Alle bestanden|*.*",
+            Filter = "MagSec encrypted image|*.mseimg|All files|*.*",
             Title = "Select an encrypted image"
         };
 
@@ -417,12 +511,12 @@ public partial class Form1 : Form
             }
 
             byte[] encrypted = File.ReadAllBytes(selectedEncryptedImagePath);
-            byte[] decryptedPackage = DecryptBytes(encrypted, secret, ImagePrefix);
+            byte[] decryptedPackage = DecryptBytes(encrypted, secret, ImagePrefix, LegacyImagePrefix);
             (string extension, byte[] imageBytes) = ReadImagePackage(decryptedPackage);
 
             using SaveFileDialog dialog = new()
             {
-                Filter = $"Origineel bestand|*{extension}|Alle bestanden|*.*",
+                Filter = $"Original file|*{extension}|All files|*.*",
                 FileName = $"{Path.GetFileNameWithoutExtension(selectedEncryptedImagePath)}_restored{extension}",
                 Title = "Save decrypted image"
             };
@@ -462,6 +556,11 @@ public partial class Form1 : Form
             throw new InvalidOperationException("Enter at least one key.");
         }
 
+        if (filledKeys.Sum(key => key.Length) < MinimumKeyLength)
+        {
+            throw new InvalidOperationException($"Use at least {MinimumKeyLength} characters across your keys for a secure result.");
+        }
+
         return string.Join("|", filledKeys);
     }
 
@@ -469,42 +568,114 @@ public partial class Form1 : Form
     {
         byte[] salt = RandomNumberGenerator.GetBytes(SaltSize);
         byte[] nonce = RandomNumberGenerator.GetBytes(NonceSize);
-        byte[] key = DeriveKey(secret, salt);
-        byte[] cipherBytes = new byte[plainBytes.Length];
-        byte[] tag = new byte[TagSize];
+        byte[] key = DeriveKey(secret, salt, Pbkdf2Iterations, KdfSha512);
 
-        using var aes = new AesGcm(key, TagSize);
-        aes.Encrypt(nonce, plainBytes, cipherBytes, tag);
-
-        byte[] payload = new byte[4 + SaltSize + NonceSize + TagSize + cipherBytes.Length];
+        byte[] payload = new byte[V2HeaderLength + TagSize + plainBytes.Length];
         Encoding.ASCII.GetBytes(prefix).CopyTo(payload, 0);
-        salt.CopyTo(payload, 4);
-        nonce.CopyTo(payload, 4 + SaltSize);
-        tag.CopyTo(payload, 4 + SaltSize + NonceSize);
-        cipherBytes.CopyTo(payload, 4 + SaltSize + NonceSize + TagSize);
+        payload[4] = FormatVersion;
+        payload[5] = KdfSha512;
+        BinaryPrimitives.WriteInt32BigEndian(payload.AsSpan(6, 4), Pbkdf2Iterations);
+        salt.CopyTo(payload, 10);
+        nonce.CopyTo(payload, 10 + SaltSize);
+
+        // The whole header (prefix, version, KDF params, salt, nonce) is bound into the
+        // authentication tag as associated data so tampering with it is detected on decrypt.
+        ReadOnlySpan<byte> associatedData = payload.AsSpan(0, V2HeaderLength);
+        Span<byte> tag = payload.AsSpan(V2HeaderLength, TagSize);
+        Span<byte> cipherBytes = payload.AsSpan(V2HeaderLength + TagSize);
+
+        try
+        {
+            using var aes = new AesGcm(key, TagSize);
+            aes.Encrypt(nonce, plainBytes, cipherBytes, tag, associatedData);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+        }
+
         return payload;
     }
 
-    private static byte[] DecryptBytes(byte[] payload, string secret, string expectedPrefix)
+    private static byte[] DecryptBytes(byte[] payload, string secret, string expectedPrefix, string legacyPrefix)
     {
-        int headerLength = 4 + SaltSize + NonceSize + TagSize;
-        if (payload.Length <= headerLength)
+        if (payload.Length < 4)
         {
             throw new InvalidOperationException("The encrypted content is incomplete.");
         }
 
         string prefix = Encoding.ASCII.GetString(payload, 0, 4);
-        if (!string.Equals(prefix, expectedPrefix, StringComparison.Ordinal))
+        if (string.Equals(prefix, expectedPrefix, StringComparison.Ordinal))
         {
-            throw new InvalidOperationException("Unknown encryption format.");
+            return DecryptV2(payload, secret);
+        }
+
+        if (string.Equals(prefix, legacyPrefix, StringComparison.Ordinal))
+        {
+            return DecryptLegacy(payload, secret);
+        }
+
+        throw new InvalidOperationException("Unknown encryption format.");
+    }
+
+    private static byte[] DecryptV2(byte[] payload, string secret)
+    {
+        if (payload.Length < V2HeaderLength + TagSize)
+        {
+            throw new InvalidOperationException("The encrypted content is incomplete.");
+        }
+
+        byte version = payload[4];
+        if (version != FormatVersion)
+        {
+            throw new InvalidOperationException("Unsupported encryption version.");
+        }
+
+        byte kdfId = payload[5];
+        int iterations = BinaryPrimitives.ReadInt32BigEndian(payload.AsSpan(6, 4));
+        if (iterations < 1 || iterations > 10_000_000)
+        {
+            throw new InvalidOperationException("Invalid key derivation parameters.");
+        }
+
+        byte[] salt = payload[10..(10 + SaltSize)];
+        byte[] nonce = payload[(10 + SaltSize)..V2HeaderLength];
+        byte[] tag = payload[V2HeaderLength..(V2HeaderLength + TagSize)];
+        byte[] cipherBytes = payload[(V2HeaderLength + TagSize)..];
+        byte[] plainBytes = new byte[cipherBytes.Length];
+        byte[] key = DeriveKey(secret, salt, iterations, kdfId);
+
+        try
+        {
+            using var aes = new AesGcm(key, TagSize);
+            aes.Decrypt(nonce, cipherBytes, tag, plainBytes, payload.AsSpan(0, V2HeaderLength));
+        }
+        catch (CryptographicException)
+        {
+            CryptographicOperations.ZeroMemory(plainBytes);
+            throw new InvalidOperationException("The keys do not match or the data is corrupted.");
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+        }
+
+        return plainBytes;
+    }
+
+    private static byte[] DecryptLegacy(byte[] payload, string secret)
+    {
+        if (payload.Length <= LegacyHeaderLength)
+        {
+            throw new InvalidOperationException("The encrypted content is incomplete.");
         }
 
         byte[] salt = payload[4..(4 + SaltSize)];
         byte[] nonce = payload[(4 + SaltSize)..(4 + SaltSize + NonceSize)];
-        byte[] tag = payload[(4 + SaltSize + NonceSize)..headerLength];
-        byte[] cipherBytes = payload[headerLength..];
+        byte[] tag = payload[(4 + SaltSize + NonceSize)..LegacyHeaderLength];
+        byte[] cipherBytes = payload[LegacyHeaderLength..];
         byte[] plainBytes = new byte[cipherBytes.Length];
-        byte[] key = DeriveKey(secret, salt);
+        byte[] key = DeriveKey(secret, salt, LegacyPbkdf2Iterations, KdfSha256);
 
         try
         {
@@ -513,7 +684,12 @@ public partial class Form1 : Form
         }
         catch (CryptographicException)
         {
+            CryptographicOperations.ZeroMemory(plainBytes);
             throw new InvalidOperationException("The keys do not match or the data is corrupted.");
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
         }
 
         return plainBytes;
@@ -549,14 +725,19 @@ public partial class Form1 : Form
         return (extension, imageBytes);
     }
 
-    private static byte[] DeriveKey(string secret, byte[] salt)
+    private static byte[] DeriveKey(string secret, byte[] salt, int iterations, byte kdfId)
     {
-        return Rfc2898DeriveBytes.Pbkdf2(
-            Encoding.UTF8.GetBytes(secret),
-            salt,
-            Pbkdf2Iterations,
-            HashAlgorithmName.SHA256,
-            KeySize);
+        HashAlgorithmName hash = kdfId == KdfSha512 ? HashAlgorithmName.SHA512 : HashAlgorithmName.SHA256;
+        byte[] secretBytes = Encoding.UTF8.GetBytes(secret);
+
+        try
+        {
+            return Rfc2898DeriveBytes.Pbkdf2(secretBytes, salt, iterations, hash, KeySize);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(secretBytes);
+        }
     }
 
     private void ShowStatus(string message, bool isError)
